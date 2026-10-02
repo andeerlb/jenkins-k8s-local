@@ -1,0 +1,8 @@
+# O controller coordena os jobs; o trabalho roda nos pods agentes.
+controller:
+  numExecutors: 0
+
+# O chart usa a StorageClass padrão do cluster.
+persistence:
+  enabled: true
+  size: 8Gi
