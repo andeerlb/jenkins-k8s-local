@@ -1,27 +1,27 @@
-// Cada branch solicita um pod agente independente ao plugin Kubernetes.
+// Each branch requests its own agent pod from the Kubernetes plugin.
 parallel(
-  agente1: {
+  agent1: {
     podTemplate {
       node(POD_LABEL) {
-        stage('Agente 1') {
+        stage('Agent 1') {
           sh 'hostname; sleep 30'
         }
       }
     }
   },
-  agente2: {
+  agent2: {
     podTemplate {
       node(POD_LABEL) {
-        stage('Agente 2') {
+        stage('Agent 2') {
           sh 'hostname; sleep 30'
         }
       }
     }
   },
-  agente3: {
+  agent3: {
     podTemplate {
       node(POD_LABEL) {
-        stage('Agente 3') {
+        stage('Agent 3') {
           sh 'hostname; sleep 30'
         }
       }

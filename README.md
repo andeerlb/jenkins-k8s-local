@@ -1,16 +1,16 @@
-# Jenkins em Kubernetes local
+# Jenkins on a local Kubernetes cluster
 
-Um cluster [kind](https://kind.sigs.k8s.io/) com dois workers e um Jenkins instalado pelo [chart oficial Helm](https://charts.jenkins.io/). O controller coordena os jobs. O plugin Kubernetes cria um pod agente por execução e o remove quando ela termina. Os workers do Kubernetes são nós do cluster; os agentes do Jenkins são pods que rodam nesses nós.
+A [kind](https://kind.sigs.k8s.io/) cluster with two workers and Jenkins installed using the [official Helm chart](https://charts.jenkins.io/). The controller coordinates jobs. The Kubernetes plugin creates an agent pod for each run and removes it when the run finishes. Kubernetes workers are cluster nodes; Jenkins agents are pods running on those nodes.
 
-## Pré-requisitos
+## Prerequisites
 
-- Docker em execução
-- `kind`, `kubectl` e `helm` instalados
-- Recursos suficientes no computador para o controller e os agentes (comece com pelo menos 4 CPUs e 8 GiB de RAM disponíveis)
+- Docker running
+- `kind`, `kubectl`, and `helm` installed
+- Enough resources for the controller and agents (start with at least 4 CPUs and 8 GiB of available RAM)
 
-## Subir o cluster e instalar o Jenkins
+## Create the cluster and install Jenkins
 
-Execute na raiz deste repositório:
+Run these commands from the repository root:
 
 ```sh
 kind create cluster --name jenkins-local --config kind.yaml
@@ -29,36 +29,36 @@ kubectl -n jenkins get pods,pvc
 helm get notes jenkins -n jenkins
 ```
 
-O contexto esperado é `kind-jenkins-local`. Confirme antes do comando Helm para não instalar em outro cluster. O chart gera a senha inicial; `helm get notes` mostra como recuperá-la.
+The expected context is `kind-jenkins-local`. Check it before running the Helm command to avoid installing Jenkins in another cluster. The chart generates the initial password; `helm get notes` shows how to retrieve it.
 
-## Acessar
+## Access Jenkins
 
-Em outro terminal:
+In another terminal, run:
 
 ```sh
 kubectl -n jenkins port-forward svc/jenkins 8080:8080
 ```
 
-Abra <http://localhost:8080> e entre com o usuário `admin` e a senha indicada pelas notas do Helm.
+Open <http://localhost:8080> and sign in with the `admin` username and the password shown in the Helm notes.
 
-## Testar três agentes simultâneos
+## Test three concurrent agents
 
-Na interface, crie um job **Pipeline**, selecione **Pipeline script from SCM**, informe a URL deste repositório quando ele tiver um remoto acessível pelo Jenkins e use `Jenkinsfile` como caminho do script. Para testar somente no computador, crie um job **Pipeline**, selecione **Pipeline script** e cole o conteúdo do `Jenkinsfile`.
+In the UI, create a **Pipeline** job, select **Pipeline script from SCM**, enter this repository's URL once it has a remote that Jenkins can access, and use `Jenkinsfile` as the script path. To test locally, create a **Pipeline** job, select **Pipeline script**, and paste the contents of `Jenkinsfile`.
 
-Durante o build, acompanhe os pods:
+Watch the pods during the build:
 
 ```sh
 kubectl -n jenkins get pods -w
 ```
 
-As três branches de `parallel` solicitam três agentes. A quantidade que roda ao mesmo tempo depende da CPU e memória disponíveis. Os pods agentes são temporários; o controller guarda configuração e jobs no PVC.
+The three `parallel` branches request three agents. How many run at the same time depends on the available CPU and memory. Agent pods are temporary; the controller stores its configuration and jobs on the PVC.
 
-Para executar jobs Flutter ou Android, substitua o exemplo por uma imagem de agente com Flutter, Java e Android SDK. Builds iOS precisam de um agente macOS fora deste cluster Linux.
+To run Flutter or Android jobs, replace the example with an agent image that includes Flutter, Java, and the Android SDK. iOS builds require a macOS agent outside this Linux cluster.
 
-## Remover
+## Remove Jenkins
 
 ```sh
 helm uninstall jenkins -n jenkins
 ```
 
-O PVC pode continuar após o `helm uninstall`. `kind delete cluster --name jenkins-local` remove o cluster local e seus dados, inclusive os dados do Jenkins armazenados nele.
+The PVC may remain after `helm uninstall`. `kind delete cluster --name jenkins-local` removes the local cluster and its data, including the Jenkins data stored in it.
