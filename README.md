@@ -55,6 +55,16 @@ The three `parallel` branches request three agents. How many run at the same tim
 
 To run Flutter or Android jobs, replace the example with an agent image that includes Flutter, Java, and the Android SDK. iOS builds require a macOS agent outside this Linux cluster.
 
+## Troubleshooting labs
+
+- [Agent image cannot be pulled](troubleshooting/image-pull/README.md)
+- [Agent pod cannot be scheduled](troubleshooting/insufficient-resources/README.md)
+- [Project checkout fails after the agent connects](troubleshooting/scm-checkout/README.md)
+- [Controller lacks permission to create agent pods](troubleshooting/rbac/README.md)
+- [Agent runs out of memory](troubleshooting/agent-oom/README.md)
+- [Agent pod egress blocked by a NetworkPolicy](troubleshooting/network-policy/README.md)
+- [Agent directed to the wrong Jenkins tunnel endpoint](troubleshooting/wrong-agent-endpoint/README.md)
+
 ## Remove Jenkins
 
 ```sh
