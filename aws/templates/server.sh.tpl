@@ -33,6 +33,7 @@ rm -f /root/kubeconfig-public.yaml
 curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
 helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+helm repo add fluent https://fluent.github.io/helm-charts
 helm repo add jenkins https://charts.jenkins.io
 helm repo update
 
@@ -58,6 +59,34 @@ reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 YAML
+
+# Fluent Bit ships every container log to CloudWatch, one stream per container.
+# Installed before Jenkins so the controller's startup log is captured.
+cat > /root/fluent-bit-values.yaml <<'YAML'
+config:
+  inputs: |
+    [INPUT]
+        Name              tail
+        Path              /var/log/containers/*.log
+        multiline.parser  docker, cri
+        Tag               kube.*
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+  outputs: |
+    [OUTPUT]
+        Name                cloudwatch_logs
+        Match               kube.*
+        region              ${region}
+        log_group_name      ${log_group}
+        log_stream_template $kubernetes['namespace_name'].$kubernetes['pod_name'].$kubernetes['container_name']
+        log_stream_prefix   unknown.
+        auto_create_group   false
+YAML
+
+helm upgrade --install fluent-bit fluent/fluent-bit \
+  --namespace logging --create-namespace \
+  --values /root/fluent-bit-values.yaml \
+  --wait --timeout 5m
 
 mkdir -p /root/jenkins
 cat > /root/jenkins/values.yaml <<'YAML'

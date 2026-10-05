@@ -1,6 +1,6 @@
 # Jenkins on k3s in AWS
 
-A low-cost cluster for the troubleshooting labs, closer to a cloud setup than kind. OpenTofu creates a small VPC, one k3s server (which also runs the Jenkins controller), optional k3s agent nodes, and an IAM role for the EBS CSI driver. Jenkins stores its data on an EBS `gp3` volume, which enforces the requested size; kind's local-path volumes do not.
+A low-cost cluster for the troubleshooting labs, closer to a cloud setup than kind. OpenTofu creates a small VPC, one k3s server (which also runs the Jenkins controller), optional k3s agent nodes, an IAM role for the EBS CSI driver, and a CloudWatch log group for container logs. Jenkins stores its data on an EBS `gp3` volume, which enforces the requested size; kind's local-path volumes do not.
 
 This is a lab, not a production setup: one public subnet, a single k3s server, and spot instances by default.
 
@@ -12,15 +12,16 @@ This is a lab, not a production setup: one public subnet, a single k3s server, a
 | k3s server | 1× `t3.large` spot | Runs the Jenkins controller |
 | k3s agents | 1× `t3.small` spot | Needed for the node failure scenario |
 | Security group | port 6443 from `allowed_cidrs` only | No SSH; shell access through SSM Session Manager |
-| IAM role | EBS CSI driver, SSM core, write the kubeconfig parameter | |
+| IAM role | EBS CSI driver, SSM core, write the kubeconfig parameter, write container logs | |
+| CloudWatch log group | `/jenkins-lab/containers`, 3-day retention | One stream per container; deleted by `tofu destroy` |
 | SSM parameter | `/jenkins-lab/kubeconfig` | The server publishes its kubeconfig here |
 | Budget (optional) | $10/month, alert at 80% | Only when `budget_email` is set; covers the whole account |
 
-The bootstrap script on the server installs k3s, the EBS CSI driver, a default `gp3` StorageClass with volume expansion enabled, and Jenkins with [`../helm/values-aws.yaml`](../helm/values-aws.yaml) (5 GiB PVC, controller memory limit 2 GiB).
+The bootstrap script on the server installs k3s, the EBS CSI driver, a default `gp3` StorageClass with volume expansion enabled, Fluent Bit (a DaemonSet that sends every container's log to CloudWatch), and Jenkins with [`../helm/values-aws.yaml`](../helm/values-aws.yaml) (5 GiB PVC, controller memory limit 2 GiB).
 
 ## Cost
 
-With the defaults, expect roughly **US$0.05 per hour** while running: spot instances, EBS volumes, and public IPv4 addresses. Spot prices vary by region and time. Destroy the stack when you finish; a stopped lab should cost close to nothing.
+With the defaults, expect roughly **US$0.05 per hour** while running: spot instances, EBS volumes, and public IPv4 addresses. CloudWatch charges per GB of logs ingested (about US$0.50/GB in us-east-1); this lab produces a few MB per day. Spot prices vary by region and time. Destroy the stack when you finish; a stopped lab should cost close to nothing.
 
 ## Prerequisites
 
@@ -89,6 +90,35 @@ kubectl -n jenkins exec svc/jenkins -c jenkins -- cat /run/secrets/additional/ch
 ```
 
 Open <http://localhost:8080> and sign in as `admin`. The second command prints the admin password created by the chart.
+
+## Container logs in CloudWatch
+
+Fluent Bit runs on every node and sends each container's log to the `/jenkins-lab/containers` log group. Each container gets its own stream, named `<namespace>.<pod>.<container>`, for example `jenkins.jenkins-0.jenkins`. The streams remain after the pod is deleted or restarted, so the evidence survives: `kubectl logs` can only read logs that are still on the node.
+
+Follow the Jenkins controller log:
+
+```sh
+$(tofu output -raw controller_logs_command)
+```
+
+Search all containers for an error, for example in the last hour:
+
+```sh
+aws logs filter-log-events --log-group-name /jenkins-lab/containers \
+  --start-time $(( ($(date +%s) - 3600) * 1000 )) \
+  --filter-pattern '"No space left on device"' \
+  --query 'events[].[logStreamName,message]' --output text
+```
+
+In the AWS console, **CloudWatch → Logs Insights** queries the same log group:
+
+```
+fields @timestamp, @logStream, log
+| filter log like /No space left on device/
+| sort @timestamp desc
+```
+
+New logs reach CloudWatch within a few seconds. If nothing arrives, check the Fluent Bit pods: `kubectl -n logging logs daemonset/fluent-bit`.
 
 ## Labs
 

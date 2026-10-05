@@ -22,6 +22,7 @@ data "aws_ami" "ubuntu" {
 locals {
   availability_zone    = coalesce(var.availability_zone, data.aws_availability_zones.available.names[0])
   kubeconfig_parameter = "/${var.name}/kubeconfig"
+  container_log_group  = "/${var.name}/containers"
 }
 
 # --- Network: one public subnet, no NAT gateway ---------------------------------
@@ -140,6 +141,27 @@ resource "aws_iam_role_policy" "kubeconfig_parameter" {
   policy = data.aws_iam_policy_document.kubeconfig_parameter.json
 }
 
+# Fluent Bit runs on every node and uses the node role to write container logs.
+data "aws_iam_policy_document" "container_logs" {
+  statement {
+    actions = [
+      "logs:CreateLogStream",
+      "logs:DescribeLogStreams",
+      "logs:PutLogEvents",
+    ]
+    resources = [
+      aws_cloudwatch_log_group.containers.arn,
+      "${aws_cloudwatch_log_group.containers.arn}:*",
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "container_logs" {
+  name   = "ship-container-logs"
+  role   = aws_iam_role.nodes.id
+  policy = data.aws_iam_policy_document.container_logs.json
+}
+
 resource "aws_iam_instance_profile" "nodes" {
   name = "${var.name}-nodes"
   role = aws_iam_role.nodes.name
@@ -155,6 +177,14 @@ resource "aws_ssm_parameter" "kubeconfig" {
   lifecycle {
     ignore_changes = [value]
   }
+}
+
+# --- Container logs -------------------------------------------------------------
+
+# One stream per container: <namespace>.<pod>.<container>. The streams outlive the pods.
+resource "aws_cloudwatch_log_group" "containers" {
+  name              = local.container_log_group
+  retention_in_days = var.log_retention_days
 }
 
 # --- k3s nodes ------------------------------------------------------------------
@@ -177,6 +207,7 @@ resource "aws_instance" "server" {
     k3s_token            = random_password.k3s_token.result
     kubeconfig_parameter = local.kubeconfig_parameter
     project_tag          = var.name
+    log_group            = local.container_log_group
     jenkins_values       = file("${path.module}/../helm/values-aws.yaml")
   })
   user_data_replace_on_change = true
@@ -211,6 +242,7 @@ resource "aws_instance" "server" {
   depends_on = [
     aws_route_table_association.public,
     aws_iam_role_policy.kubeconfig_parameter,
+    aws_iam_role_policy.container_logs,
     aws_iam_role_policy_attachment.ebs_csi,
   ]
 }

@@ -23,6 +23,16 @@ output "server_shell_command" {
   value       = "aws ssm start-session --region ${var.region} --target ${aws_instance.server.id}"
 }
 
+output "container_log_group" {
+  description = "CloudWatch log group that receives every container's logs."
+  value       = aws_cloudwatch_log_group.containers.name
+}
+
+output "controller_logs_command" {
+  description = "Follows the Jenkins controller log in CloudWatch."
+  value       = "aws logs tail ${aws_cloudwatch_log_group.containers.name} --region ${var.region} --log-stream-name-prefix jenkins.jenkins-0.jenkins --follow"
+}
+
 output "leftover_volumes_command" {
   description = "Lists EBS volumes created by the CSI driver. Run it after destroy; the list should be empty."
   value       = "aws ec2 describe-volumes --region ${var.region} --filters Name=tag:Project,Values=${var.name} --query 'Volumes[].{id:VolumeId,state:State,size:Size}' --output table"

@@ -66,6 +66,17 @@ variable "k3s_channel" {
   default     = "stable"
 }
 
+variable "log_retention_days" {
+  description = "Days CloudWatch keeps container logs."
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = contains([1, 3, 5, 7, 14, 30], var.log_retention_days)
+    error_message = "Use one of 1, 3, 5, 7, 14 or 30 days."
+  }
+}
+
 variable "budget_email" {
   description = "If set, creates an account-wide monthly cost budget that emails this address at 80% of budget_limit_usd."
   type        = string
