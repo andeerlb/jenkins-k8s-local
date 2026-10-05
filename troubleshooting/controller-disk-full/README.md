@@ -77,6 +77,26 @@ podTemplate {
 
 Select **Build Now**. This time the build **is created** and its console log works: the free space is enough for the log. The **Build** stage succeeds on the agent, which has its own disk. The **Archive** stage fails while copying the file to the controller, and the error appears in the build's console output, not only in the controller log. A partial copy of the artifact can remain in the build's directory and keep using space.
 
+### Scenario 2, without the fill file: builds that never clean up
+
+The same failure happens in real life without anyone filling the volume: every build keeps its artifacts and nothing discards old builds. The [`fill-over-time.Jenkinsfile`](fill-over-time.Jenkinsfile) pipeline reproduces that. Each build creates a file on the agent and archives it on the controller, and the job has no build discarder.
+
+Start from a clean volume (no `troubleshooting-fill`) and check how much space is free:
+
+```sh
+kubectl -n jenkins exec jenkins-0 -c jenkins -- df -h /var/jenkins_home
+```
+
+Create a Pipeline job named `release-build` with the contents of `fill-over-time.Jenkinsfile`, the same way as `baseline`. The default `SIZE_MB` is 1800, which works when between about 3.5 and 5.2 GiB are free: two files fit, three do not. If your free space is outside that range, use roughly the free space divided by 2.5.
+
+Run the job three times, one after another (the first run uses the default; later runs show **Build with Parameters**). Check `df` after each run:
+
+1. Build 1 finishes with **SUCCESS**, and about 1.8 GiB more is used.
+2. Build 2 finishes with **SUCCESS**, and the volume is almost full.
+3. Build 3 starts, its **Build** stage succeeds on the agent, and the **Archive** stage fails with `No space left on device` in the console output.
+
+After build 3 the volume is at 100%, so the next **Build Now** on any job behaves like scenario 1. `du` shows the space in `jobs/release-build/builds/*/archive`, not in a single obvious file, which is what a real incident looks like. To clean up, delete the three `release-build` runs (or the whole job) and check `df` again.
+
 ## Investigate before fixing
 
 ```sh
