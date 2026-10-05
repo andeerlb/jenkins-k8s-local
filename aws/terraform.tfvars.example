@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and adjust. terraform.tfvars is ignored by git.
+
+# Your public IP: curl -s https://checkip.amazonaws.com
+allowed_cidrs = ["<YOUR_IP>"]
+
+region      = "us-east-1"
+agent_count = 1
+use_spot    = true
+
+# Optional account-wide cost alert at 80% of the limit.
+budget_email     = "you@example.com"
+budget_limit_usd = 10

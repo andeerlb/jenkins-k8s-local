@@ -55,6 +55,10 @@ The three `parallel` branches request three agents. How many run at the same tim
 
 To run Flutter or Android jobs, replace the example with an agent image that includes Flutter, Java, and the Android SDK. iOS builds require a macOS agent outside this Linux cluster.
 
+## Run the labs on AWS instead
+
+[`aws/`](aws/README.md) provisions a low-cost k3s cluster on EC2 with OpenTofu. Its EBS volumes enforce the PVC size, which kind's local-path volumes do not.
+
 ## Troubleshooting labs
 
 - [Agent image cannot be pulled](troubleshooting/image-pull/README.md)
@@ -64,6 +68,7 @@ To run Flutter or Android jobs, replace the example with an agent image that inc
 - [Agent runs out of memory](troubleshooting/agent-oom/README.md)
 - [Agent pod egress blocked by a NetworkPolicy](troubleshooting/network-policy/README.md)
 - [Agent directed to the wrong Jenkins tunnel endpoint](troubleshooting/wrong-agent-endpoint/README.md)
+- [Controller disk is full](troubleshooting/controller-disk-full/README.md) (AWS setup only)
 
 ## Remove Jenkins
 

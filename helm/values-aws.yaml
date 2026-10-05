@@ -1,0 +1,16 @@
+# Values for the AWS lab (k3s + EBS). The controller coordinates jobs; agent pods run the workloads.
+controller:
+  numExecutors: 0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+# A small gp3 volume, so the disk-full lab fills it quickly. EBS enforces this size.
+persistence:
+  enabled: true
+  storageClass: gp3
+  size: 5Gi
