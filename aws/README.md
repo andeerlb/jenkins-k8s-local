@@ -27,7 +27,31 @@ With the defaults, expect roughly **US$0.05 per hour** while running: spot insta
 - OpenTofu 1.6 or later
 - AWS CLI with credentials for a lab account. Prefer an IAM user or SSO role over root account keys.
 - `kubectl`
-- Optional: the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) for a shell on the nodes
+- The Session Manager plugin, for a shell on the nodes (below)
+
+### Install the Session Manager plugin
+
+The nodes have no SSH access. A shell on a node goes through AWS Systems Manager Session Manager, which the AWS CLI uses only when this plugin is installed.
+
+Ubuntu or Debian (x86_64):
+
+```sh
+curl -fsSL https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb \
+  -o /tmp/session-manager-plugin.deb
+sudo dpkg -i /tmp/session-manager-plugin.deb
+```
+
+macOS (Homebrew):
+
+```sh
+brew install --cask session-manager-plugin
+```
+
+For other systems, see the [AWS installation guide](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). Verify the installation:
+
+```sh
+session-manager-plugin --version
+```
 
 ## Create
 
@@ -54,6 +78,8 @@ If something does not come up, open a shell on the server and read the bootstrap
 $(tofu output -raw server_shell_command)
 sudo tail -f /var/log/jenkins-lab-setup.log
 ```
+
+The shell needs the Session Manager plugin on your machine; without it, `aws ssm start-session` fails with `SessionManagerPlugin is not found`. See [Install the Session Manager plugin](#install-the-session-manager-plugin).
 
 ## Access Jenkins
 
