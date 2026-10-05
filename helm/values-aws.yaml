@@ -1,6 +1,8 @@
 # Values for the AWS lab (k3s + EBS). The controller coordinates jobs; agent pods run the workloads.
 controller:
   numExecutors: 0
+  # Download plugins only on the first install; later restarts reuse the ones in JENKINS_HOME.
+  initializeOnce: true
   resources:
     requests:
       cpu: 500m
